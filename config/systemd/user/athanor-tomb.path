@@ -1,0 +1,8 @@
+[Unit]
+Description=Watch for processes that dump core
+
+[Path]
+PathChanged=/var/lib/systemd/coredump
+
+[Install]
+WantedBy=default.target

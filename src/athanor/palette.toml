@@ -1,0 +1,74 @@
+# wall_desk and wall_lock are [ink, paper].
+
+[umber]
+label = "Umber"
+bg = "#16120e"
+fg = "#e3d6b8"
+dim = "#8d7d65"
+border = "#3a3126"
+active = "#d49a3a"
+bar = "#0d0b08"
+barfg = "#cfc1a3"
+bar_warn = "#dd7357"
+sigil = "#d49a3a"
+ansi = [
+  "#16120e", "#d25f42", "#8f9a5a", "#d49a3a", "#7f93a8", "#a8707a", "#7aa08c", "#cfc1a3",
+  "#8d7d65", "#dd7357", "#b0b878", "#e8bd6a", "#a3b3c2", "#c9939a", "#9fc0ab", "#f3ead3",
+]
+wall_desk = ["#16120e", "#5c4c39"]
+wall_lock = ["#16120e", "#c9b994"]
+
+[vellum]
+label = "Vellum"
+bg = "#ece1c6"
+fg = "#1f1914"
+dim = "#6e5f4c"
+border = "#b9aa86"
+active = "#7c5510"
+bar = "#ddd0ae"
+barfg = "#2b241c"
+bar_warn = "#9a3522"
+sigil = "#7c5510"
+ansi = [
+  "#1f1914", "#9a3522", "#5a6328", "#7c5510", "#3f5570", "#7a3f4c", "#3e6650", "#8d7d65",
+  "#6e5f4c", "#7f2a1a", "#4a5220", "#6a480c", "#33465c", "#64323e", "#315341", "#2b241c",
+]
+wall_desk = ["#c8b994", "#ece1c6"]
+wall_lock = ["#2b241c", "#ece1c6"]
+
+[orpiment]
+label = "Orpiment"
+bg = "#eddca8"
+fg = "#241a0c"
+dim = "#6a5737"
+border = "#c9b27a"
+active = "#7a4f06"
+bar = "#2a1d0a"
+barfg = "#e9c766"
+bar_warn = "#e8775a"
+sigil = "#8a5a08"
+ansi = [
+  "#241a0c", "#9a3522", "#4f5a1c", "#7a4f06", "#34506a", "#763a48", "#2f6048", "#7d6c4c",
+  "#6a5737", "#82291a", "#414a14", "#664105", "#2c4358", "#61303c", "#26503c", "#241a0c",
+]
+wall_desk = ["#d4bd80", "#eddca8"]
+wall_lock = ["#2a1d0a", "#eddca8"]
+
+# The error red has to stay brighter than the red bar to show on it.
+[cinnabar]
+label = "Cinnabar"
+bg = "#1c0e0c"
+fg = "#ecd9c0"
+dim = "#a8857a"
+border = "#4a2420"
+active = "#e2a24a"
+bar = "#6e1a14"
+barfg = "#f3e4cc"
+bar_warn = "#ffd27a"
+sigil = "#ee6a46"
+ansi = [
+  "#1c0e0c", "#f0643f", "#acaa6c", "#e2a24a", "#a0abbd", "#de808c", "#8cb8a0", "#d8c4ac",
+  "#a8857a", "#ff7a56", "#c0bf82", "#f2be6e", "#b8c3d2", "#eb9ca5", "#a6d0b8", "#f6e8d4",
+]
+wall_desk = ["#1c0e0c", "#6e3428"]
+wall_lock = ["#1c0e0c", "#d6ad94"]

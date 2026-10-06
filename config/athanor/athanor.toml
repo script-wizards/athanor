@@ -1,0 +1,33 @@
+[place]
+# Without this, the planetary hours assume sunrise at 6:00 and sunset at 18:00.
+# latitude = 40.71
+# longitude = -74.01
+
+[character]
+# name defaults to your login name and race to your distro.
+# name = "Prospero"
+title = "the Wizard"
+# race = "Arch Linux"
+
+[room]
+name = "A Dim Chamber"
+description = "Dust hangs in the lamplight. A terminal hums on the desk."
+
+[room.exits]
+# Listed under the room as its obvious exits.
+# north = "~/projects"
+# down = "~/notes"
+
+[display]
+# Screen pixels per wallpaper pixel. 0 picks 2 (3 at 4K).
+pixel_scale = 0
+# tandy, terminus, cozette, compaq or vga. Applies at the next transmute.
+terminal_font = "tandy"
+
+[transmute]
+# Change scheme with the time of day: umber at night, then vellum, orpiment
+# and cinnabar through the daylight hours.
+stages = false
+
+[tarot]
+on_login = true

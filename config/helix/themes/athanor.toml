@@ -1,0 +1,65 @@
+# Uses the terminal's 16 colors, so it follows the scheme.
+"keyword" = "red"
+"keyword.control" = "red"
+"keyword.function" = "red"
+"keyword.storage" = "red"
+"operator" = "gray"
+"punctuation" = "gray"
+"string" = "green"
+"constant" = "magenta"
+"constant.numeric" = "magenta"
+"constant.character.escape" = "cyan"
+"comment" = "gray"
+"function" = "light-yellow"
+"function.builtin" = "light-yellow"
+"type" = "cyan"
+"type.builtin" = "cyan"
+"constructor" = "cyan"
+"variable.builtin" = "yellow"
+"label" = "yellow"
+"namespace" = "blue"
+"attribute" = "blue"
+"tag" = "red"
+"special" = "yellow"
+
+"markup.heading" = { fg = "yellow", modifiers = ["bold"] }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
+"markup.raw" = "green"
+"markup.quote" = "gray"
+"markup.list" = "red"
+
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "yellow"
+
+"ui.linenr" = "gray"
+"ui.linenr.selected" = "yellow"
+"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursor.primary" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "yellow", modifiers = ["underlined"] }
+"ui.selection" = { modifiers = ["reversed"] }
+"ui.statusline" = {}
+"ui.statusline.inactive" = { fg = "gray" }
+"ui.statusline.normal" = { fg = "black", bg = "yellow" }
+"ui.statusline.insert" = { fg = "black", bg = "green" }
+"ui.statusline.select" = { fg = "black", bg = "magenta" }
+"ui.bufferline" = { fg = "gray" }
+"ui.bufferline.active" = { fg = "black", bg = "yellow" }
+"ui.bufferline.background" = {}
+"ui.popup" = {}
+"ui.window" = "gray"
+"ui.help" = {}
+"ui.menu" = {}
+"ui.menu.selected" = { modifiers = ["reversed"] }
+"ui.virtual.whitespace" = "gray"
+"ui.virtual.ruler" = { modifiers = ["reversed"] }
+"ui.virtual.inlay-hint" = "gray"
+
+"warning" = "yellow"
+"error" = "red"
+"info" = "blue"
+"hint" = "gray"
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }

@@ -1,0 +1,18 @@
+{
+  "layer": "top",
+  "position": "bottom",
+  "height": 24,
+  "spacing": 0,
+  "modules-left": ["custom/rogue"],
+  "modules-right": ["custom/sky"],
+  "custom/rogue": {
+    "exec": "~/.local/bin/athanor status --waybar",
+    "return-type": "json",
+    "restart-interval": 5
+  },
+  "custom/sky": {
+    "exec": "~/.local/bin/athanor hour --waybar --follow",
+    "return-type": "json",
+    "restart-interval": 5
+  }
+}

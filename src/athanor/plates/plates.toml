@@ -1,0 +1,79 @@
+# inset trims the printed border and caption: left, top, right, bottom, as
+# fractions of the scan. focus is a point in the plate and anchor is where it
+# should land on screen.
+
+[[level]]
+name = "Merlin leads the king out of the ruins"
+file = "merlin-and-the-king.jpg"
+source = "https://commons.wikimedia.org/wiki/File:Idylls_of_the_King_1.jpg"
+inset = [0.045, 0.03, 0.045, 0.075]
+focus = [0.32, 0.68]
+anchor = [0.35, 0.60]
+gamma = 1.4
+contrast = "4x50%"
+
+[[level]]
+name = "Merlin shows the book"
+file = "merlin-and-the-book.jpg"
+source = "https://commons.wikimedia.org/wiki/File:Idylls_of_the_King_15.jpg"
+inset = [0.045, 0.03, 0.045, 0.075]
+focus = [0.42, 0.66]
+anchor = [0.42, 0.60]
+gamma = 1.4
+contrast = "4x50%"
+
+[[level]]
+name = "Merlin and Vivien under the oak"
+file = "merlin-and-vivien.jpg"
+source = "https://commons.wikimedia.org/wiki/File:Idylls_of_the_King_10.jpg"
+inset = [0.045, 0.03, 0.045, 0.075]
+focus = [0.33, 0.74]
+anchor = [0.32, 0.62]
+gamma = 1.4
+contrast = "4x50%"
+
+[[level]]
+name = "The old man in the grotto"
+file = "the-grotto.jpg"
+source = "https://commons.wikimedia.org/wiki/File:Idylls_of_the_King_17.jpg"
+inset = [0.045, 0.03, 0.045, 0.075]
+focus = [0.60, 0.62]
+anchor = [0.60, 0.58]
+gamma = 1.4
+contrast = "4x50%"
+
+[[level]]
+name = "Hooded figures in the black forest"
+file = "hooded-figures.jpg"
+source = "https://commons.wikimedia.org/wiki/File:Orlando_Furioso_31.jpg"
+inset = [0.045, 0.03, 0.045, 0.075]
+focus = [0.40, 0.68]
+anchor = [0.40, 0.60]
+gamma = 1.4
+contrast = "4x50%"
+
+[[level]]
+name = "The lamp-lit hall"
+file = "the-lamp-lit-hall.jpg"
+source = "https://commons.wikimedia.org/wiki/File:Orlando_Furioso_6.jpg"
+inset = [0.045, 0.03, 0.045, 0.075]
+focus = [0.50, 0.50]
+anchor = [0.50, 0.50]
+gamma = 1.4
+contrast = "4x50%"
+
+[[level]]
+name = "The graveyard under the moon"
+file = "the-graveyard.jpg"
+source = "https://commons.wikimedia.org/wiki/File:Dore_The_Raven_1884-15.jpg"
+inset = [0.045, 0.03, 0.045, 0.075]
+focus = [0.50, 0.50]
+anchor = [0.50, 0.50]
+gamma = 1.4
+contrast = "4x50%"
+
+[lock]
+name = "Satan's despair (Paradise Lost, 1866)"
+file = "satans-despair.jpg"
+source = "https://commons.wikimedia.org/wiki/File:Gustave_Dore_Satan%27s_Despair.jpg"
+contrast = "3x45%"

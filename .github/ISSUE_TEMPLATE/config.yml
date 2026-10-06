@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/script-wizards/athanor/discussions/categories/q-a
+    about: How to set something up, or whether something is possible.
+  - name: Show your setup
+    url: https://github.com/script-wizards/athanor/discussions/categories/show-and-tell
+    about: Screenshots of your own setup.

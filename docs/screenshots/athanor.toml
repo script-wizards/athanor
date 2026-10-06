@@ -1,0 +1,20 @@
+[place]
+latitude = 40.72
+longitude = -74.05
+
+[character]
+name = "Prospero"
+title = "the Magus"
+race = "Arch Linux"
+
+[room]
+name = "The Tower"
+description = "Lamplight pools on a desk buried in star charts. A terminal hums here."
+
+[room.exits]
+north = "@demo@/almagest"
+east = "@demo@/grimoire"
+up = "@demo@/observatory"
+
+[tarot]
+on_login = true

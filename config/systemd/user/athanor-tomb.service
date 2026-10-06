@@ -1,0 +1,6 @@
+[Unit]
+Description=Announce a new coredump on the message line
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/athanor tomb --notify

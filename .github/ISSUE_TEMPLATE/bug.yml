@@ -1,0 +1,18 @@
+name: Bug
+description: Something broke or looks wrong.
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead. Screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: athanor doctor --json
+      description: Paste the output. If the install itself failed, paste what install.sh printed instead.
+      render: json
+    validations:
+      required: true
