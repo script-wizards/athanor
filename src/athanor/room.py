@@ -4,7 +4,7 @@ import platform
 import textwrap
 from pathlib import Path
 
-from . import status
+from . import macos, status
 from .ansi import paint
 
 COMPASS = ("north", "south", "east", "west", "up", "down", "in", "out")
@@ -57,13 +57,13 @@ def sheet(cfg, color: bool) -> str:
     rows = [
         (
             "Race",
-            cfg.race or osr.get("NAME", platform.system()),
+            cfg.race or ("macOS" if macos.available() else osr.get("NAME", platform.system())),
             "Kernel",
             platform.release().split("-")[0],
         ),
         (
             "Class",
-            os.environ.get("XDG_CURRENT_DESKTOP", "tty"),
+            "Aqua" if macos.available() else os.environ.get("XDG_CURRENT_DESKTOP", "tty"),
             "Shell",
             Path(os.environ.get("SHELL", "sh")).name,
         ),

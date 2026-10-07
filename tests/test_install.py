@@ -14,6 +14,9 @@ EVERYTHING = (
 )
 
 STUBS = {
+    "uname": 'echo "${PLATFORM:-Linux}"',
+    "brew": '''[[ $1 == list ]] && { [[ " $INSTALLED " == *" $3 "* ]]; exit; }
+echo "brew $*" >> "$LOG"''',
     "sudo": 'echo "sudo $*" >> "$LOG"',
     "pacman": """[[ $1 == -Q ]] && { [[ " $INSTALLED " == *" $2 "* ]]; exit; }
 echo "pacman $*" >> "$LOG\"""",
@@ -22,7 +25,7 @@ echo "pacman $*" >> "$LOG\"""",
     "tar": "true",
     "perl": "true",
     "curl": 'while [[ $# -gt 0 ]]; do [[ $1 == -o ]] && { touch "$2"; shift; }; shift; done',
-    "unzip": """args=("$@"); d=${args[-1]}
+    "unzip": """args=("$@"); d=${args[${#args[@]}-1]}
 for a in "${args[@]}"; do [[ $a == *.ttf ]] && touch "$d/$(basename "$a")"; done""",
     "uv": """echo "uv $*" >> "$LOG"
 case "$1 $2" in
@@ -60,7 +63,14 @@ class Home:
         self.log = path / "log"
         path.mkdir()
 
-    def run(self, *args: str, managed: str = "", installed: str = EVERYTHING) -> str:
+    def run(
+        self,
+        *args: str,
+        managed: str = "",
+        installed: str = EVERYTHING,
+        platform: str = "Linux",
+        xdg: str = "",
+    ) -> str:
         env = {
             "HOME": str(self.path),
             "PATH": f"{self.stubs}:/usr/bin:/bin",
@@ -68,7 +78,10 @@ class Home:
             "SHELL": "/usr/bin/zsh",
             "INSTALLED": installed,
             "MANAGED": managed,
+            "PLATFORM": platform,
         }
+        if xdg:
+            env["XDG_CONFIG_HOME"] = xdg
         done = subprocess.run(
             ["bash", str(INSTALL), *args], env=env, capture_output=True, text=True, timeout=60
         )
@@ -190,7 +203,7 @@ def test_a_chezmoi_managed_zshrc_is_left_alone(home):
     zshrc = home.write(".zshrc", "x=1\n")
     out = home.run("shell", managed=str(home / ".zshrc"))
     assert (home / ".zshrc").read_bytes() == zshrc
-    assert "chezmoi manages it" in out and "source ~/.config/athanor/athanor.zsh" in out
+    assert "chezmoi manages it" in out and 'source "${XDG_CONFIG_HOME' in out
 
 
 def test_a_symlinked_zshrc_is_left_alone(home, tmp_path):
@@ -272,3 +285,53 @@ def test_vga_and_compaq_get_an_overstrike_bold_once(home):
         (home / f".local/share/fonts/athanor/{name}").touch()
     home.run("shell")
     assert home.log.read_text().count("tools/overstrike.py") == 2
+
+
+def test_macos_defaults_to_shell_and_uses_native_fonts(home):
+    home.run(platform="Darwin")
+    assert (home / "Library/Fonts/athanor/Px437_Tandy2K.ttf").exists()
+    assert not (home / "Library/Fonts/athanor/t0-16i-uni.bdf").exists()
+    assert not (home / ".config/fontconfig").exists()
+    assert not (home / ".config/hypr").exists()
+    assert "systemctl" not in home.log.read_text()
+    assert "pacman" not in home.log.read_text()
+
+
+def test_macos_installs_only_missing_homebrew_formulae(home):
+    home.run(platform="Darwin", installed="uv")
+    assert "brew install imagemagick\n" in home.log.read_text()
+    assert "sudo" not in home.log.read_text()
+
+
+def test_macos_restores_zshrc_permissions_and_purges_native_fonts(home):
+    before = home.write(".zshrc", "# my settings\n", 0o600)
+    home.run(platform="Darwin")
+    assert stat.S_IMODE((home / ".zshrc").stat().st_mode) == 0o600
+    home.run("--uninstall", platform="Darwin")
+    assert (home / ".zshrc").read_bytes() == before
+    assert stat.S_IMODE((home / ".zshrc").stat().st_mode) == 0o600
+    assert (home / "Library/Fonts/athanor").is_dir()
+    home.run("--uninstall", "--purge", platform="Darwin")
+    assert home.files() == {".zshrc"}
+
+
+def test_macos_dry_run_is_read_only(home):
+    home.write(".zshrc", "# my settings\n")
+    home.run("--dry-run", platform="Darwin")
+    assert home.files() == {".zshrc"}
+    assert not home.log.exists()
+
+
+@pytest.mark.parametrize("layer", ["desktop", "notch"])
+def test_macos_rejects_linux_layers_before_any_changes(home, layer):
+    env = {"HOME": str(home.path), "PATH": f"{home.stubs}:/usr/bin:/bin", "PLATFORM": "Darwin"}
+    done = subprocess.run(["bash", str(INSTALL), layer], env=env, capture_output=True, text=True)
+    assert done.returncode == 2 and "require Linux and Hyprland" in done.stderr
+    assert home.files() == set()
+
+
+def test_custom_xdg_config_is_sourced(home):
+    custom = str(home / "custom")
+    home.run("shell", xdg=custom)
+    assert (home / "custom/athanor/athanor.zsh").is_symlink()
+    assert "${XDG_CONFIG_HOME:-$HOME/.config}" in (home / ".zshrc").read_text()

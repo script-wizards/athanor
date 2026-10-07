@@ -1,7 +1,7 @@
 [project]
 name = "athanor"
 version = "0.2.0"
-description = "An alchemical layer for Arch and Hyprland"
+description = "An alchemical shell for macOS and desktop layer for Hyprland"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"

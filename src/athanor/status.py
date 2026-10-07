@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import hypr
+from . import hypr, macos
 
 POWER = Path("/sys/class/power_supply")
 MODULES = Path("/usr/lib/modules")
@@ -39,7 +39,11 @@ def _read(path: Path) -> str | None:
         return None
 
 
-def battery(root: Path = POWER) -> Battery | None:
+def battery(root: Path | None = None) -> Battery | None:
+    if root is None and macos.available():
+        info = macos.battery_info()
+        return Battery(*info) if info else None
+    root = root if root is not None else POWER
     if not root.exists():
         return None
     for supply in sorted(root.iterdir()):
@@ -60,12 +64,14 @@ def battery(root: Path = POWER) -> Battery | None:
 
 
 class Cpu:
-    def __init__(self, stat: Path = Path("/proc/stat")):
+    def __init__(self, stat: Path | None = None):
         self.stat = stat
         self.prev: tuple[int, int] | None = None
 
     def _sample(self) -> tuple[int, int] | None:
-        line = _read(self.stat)
+        if self.stat is None and macos.available():
+            return macos.cpu_sample()
+        line = _read(self.stat if self.stat is not None else Path("/proc/stat"))
         if not line:
             return None
         fields = [int(v) for v in line.splitlines()[0].split()[1:]]
@@ -81,7 +87,10 @@ class Cpu:
         return max(0, min(100, round(busy * 100)))
 
 
-def mem_used(meminfo: Path = Path("/proc/meminfo")) -> int:
+def mem_used(meminfo: Path | None = None) -> int:
+    if meminfo is None and macos.available():
+        return macos.mem_used()
+    meminfo = meminfo if meminfo is not None else Path("/proc/meminfo")
     values = {}
     for line in (_read(meminfo) or "").splitlines():
         key, _, rest = line.partition(":")
@@ -89,7 +98,10 @@ def mem_used(meminfo: Path = Path("/proc/meminfo")) -> int:
     return values.get("MemTotal", 0) - values.get("MemAvailable", 0)
 
 
-def uptime_minutes(uptime: Path = Path("/proc/uptime")) -> int:
+def uptime_minutes(uptime: Path | None = None) -> int:
+    if uptime is None and macos.available():
+        return macos.uptime_minutes()
+    uptime = uptime if uptime is not None else Path("/proc/uptime")
     text = _read(uptime)
     return int(float(text.split()[0]) // 60) if text else 0
 

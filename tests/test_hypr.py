@@ -1,6 +1,8 @@
 import os
 import socket
+import tempfile
 import time
+from pathlib import Path
 
 import pytest
 
@@ -8,10 +10,14 @@ from athanor import hypr, transmute
 
 
 @pytest.fixture
-def runtime(tmp_path, monkeypatch):
+def runtime(monkeypatch):
     monkeypatch.delenv("HYPRLAND_INSTANCE_SIGNATURE", raising=False)
-    monkeypatch.setattr(hypr, "_bases", lambda: [tmp_path / "hypr"])
-    return tmp_path / "hypr"
+    # Darwin's Unix socket paths are capped at 104 bytes; pytest's default
+    # directory beneath /var/folders can exceed that before the socket name.
+    with tempfile.TemporaryDirectory(prefix="athanor-hypr-", dir="/tmp") as tmp:
+        root = Path(tmp) / "hypr"
+        monkeypatch.setattr(hypr, "_bases", lambda: [root])
+        yield root
 
 
 def instance(base, name: str, live: bool, age: float):
@@ -52,6 +58,7 @@ def test_the_signature_still_decides_inside_the_session(runtime, monkeypatch):
 
 def test_drawing_for_the_default_screen_says_so(monkeypatch):
     said = []
+    monkeypatch.setattr(transmute.macos, "available", lambda: False)
     monkeypatch.setattr(hypr, "screen_size", lambda: None)
     assert transmute.screen_or_default(said.append) == transmute.DEFAULT_SIZE
     assert "1920x1080" in said[0] and "inside the session" in said[0]

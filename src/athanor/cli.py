@@ -18,6 +18,7 @@ from . import (
     guide,
     hypr,
     inventory,
+    macos,
     palette,
     sigil,
     sky,
@@ -110,7 +111,8 @@ def cmd_transmute(args) -> None:
     scheme, walls = transmute.apply(name, reload=not args.no_reload, size=size)
     print(f"You read a scroll of transmutation. {transmute.HUES[scheme.name]}")
     if walls is None:
-        print("No plates were drawn because ImageMagick is missing. pacman -S imagemagick")
+        install = "brew install imagemagick" if macos.available() else "pacman -S imagemagick"
+        print(f"No plates were drawn because ImageMagick is missing. {install}")
 
 
 def cmd_doctor(args) -> None:
@@ -283,6 +285,9 @@ def cmd_tomb(args) -> None:
             return
         where = f" on Dlvl {dlvl}" if dlvl is not None else ""
         # The process picked its own name and mako parses Pango markup.
+        if macos.available():
+            macos.notify(f"{crash.name} was killed by a {tomb.cause(crash.signal)}{where}.")
+            return
         transmute.run(
             "notify-send",
             "-a",
@@ -362,7 +367,7 @@ def cmd_palette(args) -> None:
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="athanor", description="An alchemical layer for Arch and Hyprland."
+        prog="athanor", description="An alchemical shell for macOS and desktop layer for Hyprland."
     )
     sub = p.add_subparsers(dest="command", required=True)
 
@@ -469,5 +474,7 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> None:
     args = parser().parse_args(argv)
+    if macos.available() and args.command in ("quit", "windows"):
+        sys.exit(f"athanor {args.command} requires Linux and Hyprland; it is unavailable on macOS.")
     with contextlib.suppress(BrokenPipeError, KeyboardInterrupt):
         args.fn(args)

@@ -4,6 +4,8 @@ import struct
 import zlib
 from pathlib import Path
 
+from . import macos
+
 HOST_KEYS = ("ssh_host_ed25519_key.pub", "ssh_host_ecdsa_key.pub", "ssh_host_rsa_key.pub")
 SIZE = 11
 
@@ -28,7 +30,14 @@ def host_digest(etc: Path = Path("/etc")) -> tuple[bytes, str]:
     try:
         machine = (etc / "machine-id").read_text().strip()
     except OSError:
-        machine = "athanor"
+        machine = macos.machine_id() if macos.available() else ""
+        if machine:
+            digest = hashlib.sha256(machine.encode()).digest()
+            return digest, "platform-uuid"
+        # Keep a stable seed even on systems without SSH keys or a machine id.
+        import socket
+
+        machine = socket.gethostname()
     digest = hashlib.sha256(machine.encode()).digest()
     return digest, "machine-id"
 

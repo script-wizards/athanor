@@ -6,11 +6,12 @@ import shutil
 import signal
 import socket
 import subprocess
+import sys
 import time
 from datetime import date, datetime
 from pathlib import Path
 
-from . import config, cursor, hypr, palette, sigil, sky, stages, tarot, wall
+from . import config, cursor, hypr, macos, palette, sigil, sky, stages, tarot, wall
 from .paths import cache_dir, current_dir, runtime_dir, state_dir, write_atomic
 from .render import render_tree
 
@@ -41,6 +42,12 @@ def osc(scheme: palette.Scheme) -> str:
 
 def recolor_terminals(scheme: palette.Scheme) -> int:
     seq, count, uid = osc(scheme), 0, os.getuid()
+    if macos.available():
+        if sys.stdout.isatty():
+            sys.stdout.write(seq)
+            sys.stdout.flush()
+            return 1
+        return 0
     pts = Path("/dev/pts")
     for tty in pts.iterdir() if pts.is_dir() else ():
         if not tty.name.isdigit():
@@ -77,6 +84,13 @@ def _hyprpaper(path: Path) -> bool:
 
 
 def start_wallpaper(path: Path) -> None:
+    if macos.available():
+        if not macos.set_wallpaper(path):
+            print(
+                "Could not set the wallpaper. Allow System Events automation when prompted, "
+                f"or select {path} in System Settings > Wallpaper."
+            )
+        return
     if _hyprpaper(path):
         return
     if not shutil.which("swaybg"):
@@ -105,10 +119,13 @@ def start_wallpaper(path: Path) -> None:
 
 
 def screen_or_default(log=print) -> tuple[int, int]:
-    size = hypr.screen_size()
+    size = screen_size()
     if size:
         return size
     w, h = DEFAULT_SIZE
+    if macos.available():
+        log(f"Could not read the display size; drawing for {w}x{h}. Use --size WxH to override.")
+        return DEFAULT_SIZE
     log(
         f"No running Hyprland answered, so this is drawn for {w}x{h}. "
         "Run athanor transmute again inside the session to fit the screen."
@@ -116,9 +133,13 @@ def screen_or_default(log=print) -> tuple[int, int]:
     return DEFAULT_SIZE
 
 
+def screen_size() -> tuple[int, int] | None:
+    return macos.screen_size() if macos.available() else hypr.screen_size()
+
+
 def current_walls(size: tuple[int, int] | None = None):
     cfg = config.load()
-    size = size or hypr.screen_size() or DEFAULT_SIZE
+    size = size or screen_size() or DEFAULT_SIZE
     return wall.render(
         palette.load(saved_scheme()), size, cache_dir() / "wall", cfg.pixel_scale, cfg.levels
     )
@@ -250,10 +271,19 @@ def apply(
         card_of_day_png(scheme, layout)
     toks = tokens(scheme, size, walls, sigil_png, fingerprint, cfg.terminal_font, cfg.name)
     render_tree(current_dir(), toks)
+    if macos.available():
+        macos.render_profiles(current_dir() / "terminal")
     write_atomic(state_dir() / "scheme", scheme.name + "\n")
-    cursor.render(scheme)
+    if not macos.available():
+        cursor.render(scheme)
 
     if reload:
+        if macos.available():
+            if walls:
+                start_wallpaper(walls.desk)
+            recolor_terminals(scheme)
+            macos.notify(message or f"You read a scroll of transmutation. {HUES[scheme.name]}")
+            return scheme, walls
         hypr.request("reload")
         run("pkill", "-SIGUSR2", "-x", "waybar")
         run("makoctl", "reload")
@@ -272,7 +302,7 @@ def apply(
 
 def prerender(size: tuple[int, int] | None = None) -> None:
     cfg = config.load()
-    size = size or hypr.screen_size() or DEFAULT_SIZE
+    size = size or screen_size() or DEFAULT_SIZE
     for name in palette.SCHEMES:
         with contextlib.suppress(wall.MissingTool, subprocess.CalledProcessError):
             wall.render(palette.load(name), size, cache_dir() / "wall", cfg.pixel_scale, cfg.levels)

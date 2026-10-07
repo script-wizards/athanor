@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#   ./install.sh [layer...]           install layers (default: shell desktop)
+#   ./install.sh [layer...]           install layers (macOS: shell; Linux: shell desktop)
 #   ./install.sh --dry-run [layer...] print what would happen
 #   ./install.sh --uninstall          remove Athanor
 #   ./install.sh --uninstall --purge  also remove settings, fonts, cache, state
@@ -15,9 +15,13 @@
 set -euo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+platform=$(uname -s)
 config=${XDG_CONFIG_HOME:-$HOME/.config}
 home=$config/athanor
 fonts=${XDG_DATA_HOME:-$HOME/.local/share}/fonts/athanor
+if [[ $platform == Darwin && -z ${XDG_DATA_HOME:-} ]]; then
+  fonts=$HOME/Library/Fonts/athanor
+fi
 cursors=${XDG_DATA_HOME:-$HOME/.local/share}/icons/athanor
 data=${XDG_DATA_HOME:-$HOME/.local/share}/athanor
 notch=$data/athanor-notch.so
@@ -41,6 +45,10 @@ markers() {
 }
 
 shell_packages=(zsh uv imagemagick curl unzip fontconfig perl)
+if [[ $platform == Darwin ]]; then
+  # zsh, curl, unzip and perl ship with macOS. CoreText loads fonts directly.
+  shell_packages=(uv imagemagick)
+fi
 desktop_packages=(
   hyprland hyprlock hypridle waybar mako fuzzel foot ttf-nerd-fonts-symbols-mono hyprpaper swaybg
   libnotify grim slurp wl-clipboard brightnessctl playerctl
@@ -65,7 +73,9 @@ for arg in "$@"; do
       ;;
   esac
 done
-((${#layers[@]})) || layers=(shell desktop)
+if ((${#layers[@]} == 0)); then
+  if [[ $platform == Darwin ]]; then layers=(shell); else layers=(shell desktop); fi
+fi
 
 has_layer() {
   local l
@@ -77,6 +87,10 @@ if has_layer notch && ! has_layer desktop; then
 fi
 if has_layer desktop && ! has_layer shell; then
   layers=(shell "${layers[@]}")
+fi
+if [[ $platform == Darwin && $mode == install ]] && has_layer desktop; then
+  echo "desktop and notch require Linux and Hyprland. On macOS use ./install.sh shell." >&2
+  exit 2
 fi
 
 say() { printf '\033[33m@\033[0m %s\n' "$*"; }
@@ -118,7 +132,7 @@ unlink_ours() {
 editable() {
   local file=$1
   if [[ -L $file ]]; then
-    reason="it is a symlink to $(readlink -f "$file")"
+    reason="it is a symlink to $(readlink "$file")"
     return 1
   fi
   if command -v chezmoi >/dev/null && chezmoi source-path "$file" >/dev/null 2>&1; then
@@ -162,7 +176,7 @@ add_block() {
       cat "$file"
     fi
   } >"$tmp"
-  [[ -f $file ]] && chmod --reference="$file" "$tmp"
+  [[ -f $file ]] && copy_mode "$file" "$tmp"
   mv "$tmp" "$file"
 }
 
@@ -184,12 +198,19 @@ remove_block() {
     gap && $0 == "" { gap = 0; next }
     { gap = 0; print }
   ' "$file" >"$tmp"
-  chmod --reference="$file" "$tmp"
+  copy_mode "$file" "$tmp"
   if [[ -z $(tr -d '[:space:]' <"$tmp") ]]; then
     rm "$tmp" "$file"
   else
     mv "$tmp" "$file"
   fi
+}
+
+copy_mode() {
+  local mode
+  if mode=$(stat -c '%a' "$1" 2>/dev/null); then :
+  else mode=$(stat -f '%Lp' "$1"); fi
+  chmod "$mode" "$2"
 }
 
 zshrc() {
@@ -203,7 +224,9 @@ zshrc() {
 
 hyprconf=$config/hypr/hyprland.conf
 hyprlua=$config/hypr/hyprland.lua
-zsh_body='[[ -r ~/.config/athanor/athanor.zsh ]] && source ~/.config/athanor/athanor.zsh'
+# This block is evaluated by zsh when sourced, not by the installer.
+# shellcheck disable=SC2016
+zsh_body='[[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/athanor/athanor.zsh" ]] && source "${XDG_CONFIG_HOME:-$HOME/.config}/athanor/athanor.zsh"'
 hypr_body='source = ~/.config/athanor/hypr/athanor.conf'
 hypr_binds='source = ~/.config/athanor/hypr/binds.conf'
 # require() needs an absolute path.
@@ -217,8 +240,10 @@ shell_links=(
   "config/micro/colorschemes/athanor.micro:$config/micro/colorschemes/athanor.micro"
   "config/nvim/colors/athanor.lua:$config/nvim/colors/athanor.lua"
   "config/nvim/lua/lualine/themes/athanor.lua:$config/nvim/lua/lualine/themes/athanor.lua"
-  "config/fontconfig/60-athanor.conf:$config/fontconfig/conf.d/60-athanor.conf"
 )
+if [[ $platform != Darwin ]]; then
+  shell_links+=("config/fontconfig/60-athanor.conf:$config/fontconfig/conf.d/60-athanor.conf")
+fi
 desktop_links=(
   "config/hypr/athanor.lua:$home/hypr/athanor.lua"
   "config/hypr/binds.lua:$home/hypr/binds.lua"
@@ -238,6 +263,21 @@ legacy_links=(
 
 install_packages() {
   local wanted=("$@") missing=() p
+  if [[ $platform == Darwin ]]; then
+    if ! command -v brew >/dev/null; then
+      warn "Homebrew is required: https://brew.sh. Then run: brew install ${wanted[*]}"
+      ((dry)) && return 0
+      return 1
+    fi
+    for p in "${wanted[@]}"; do
+      brew list --versions "$p" >/dev/null 2>&1 || missing+=("$p")
+    done
+    if ((${#missing[@]})); then
+      say "installing ${missing[*]}"
+      run brew install "${missing[@]}"
+    fi
+    return 0
+  fi
   if ! command -v pacman >/dev/null; then
     warn "No pacman here. Install these yourself: ${wanted[*]}"
     return 0
@@ -259,10 +299,11 @@ install_fonts() {
   say "fonts in $fonts"
   local f
   local oldschool=(PxPlus_IBM_VGA_8x16.ttf Px437_CompaqThin_8x16.ttf Px437_Tandy2K.ttf Px437_ATT_PC6300.ttf)
-  for f in TerminusTTF-4.49.3.ttf CozetteVector.ttf t0-16i-uni.bdf PxPlus_IBM_VGA_8x16-Overstrike.ttf "${oldschool[@]}"; do
+  for f in TerminusTTF-4.49.3.ttf CozetteVector.ttf PxPlus_IBM_VGA_8x16-Overstrike.ttf "${oldschool[@]}"; do
     # Running terminals won't see new fonts until they restart.
     [[ -f $fonts/$f ]] || fresh_fonts=1
   done
+  if [[ $platform != Darwin && ! -f $fonts/t0-16i-uni.bdf ]]; then fresh_fonts=1; fi
   run mkdir -p "$fonts"
   local missing=()
   for f in "${oldschool[@]}"; do
@@ -282,7 +323,8 @@ install_fonts() {
       "terminus-ttf-4.49.3/TerminusTTF-4.49.3.ttf" \
       "terminus-ttf-4.49.3/TerminusTTF-Bold-4.49.3.ttf" -d "$fonts"
   fi
-  if [[ ! -f $fonts/t0-16i-uni.bdf ]]; then
+  # CoreText cannot load the Linux bitmap italic face.
+  if [[ $platform != Darwin && ! -f $fonts/t0-16i-uni.bdf ]]; then
     tmp=${tmp:-$(mktemp -d)}
     trap 'rm -rf "$tmp"' EXIT
     run curl -fsSL -o "$tmp/ttyp0.tar.gz" "$ttyp0_tar"
@@ -305,7 +347,7 @@ install_fonts() {
     run curl -fsSL -o "$fonts/Jacquard24-Regular.ttf" "$google/jacquard24/Jacquard24-Regular.ttf"
   [[ -f $fonts/IMFeENrm28P.ttf ]] ||
     run curl -fsSL -o "$fonts/IMFeENrm28P.ttf" "$google/imfellenglish/IMFeENrm28P.ttf"
-  run fc-cache -f "$fonts"
+  if [[ $platform != Darwin ]]; then run fc-cache -f "$fonts"; fi
 }
 
 link_all() {
@@ -340,12 +382,16 @@ install_shell() {
   if command -v micro >/dev/null && ! grep -qs '"colorscheme": *"athanor"' "$config/micro/settings.json"; then
     say "For the micro theme, set \"colorscheme\": \"athanor\" in $config/micro/settings.json."
   fi
-  run fc-cache -f
+  if [[ $platform != Darwin ]]; then run fc-cache -f; fi
   local face
   face=$("$athanor" font 2>/dev/null || true)
   say "For a terminal other than Athanor's foot, set its font to ${face:-Terminus (TTF) at 16px}."
+  if [[ $platform == Darwin ]]; then
+    say "Terminal.app profiles are in $home/current/terminal. Open a .terminal file to import it."
+    say "Kitty colors are in $home/current/kitty/colors.conf; include that file from kitty.conf."
+  fi
   if [[ $(basename "${SHELL:-}") != zsh ]]; then
-    say "Your login shell is ${SHELL:-unknown}. The prompt needs zsh: chsh -s /usr/bin/zsh"
+    say "Your login shell is ${SHELL:-unknown}. The prompt needs zsh: chsh -s $(command -v zsh)"
   fi
 }
 
@@ -412,7 +458,7 @@ uninstall() {
   remove_block "$hyprconf"
   remove_block "$hyprlua"
 
-  if [[ -L $units/athanor-tomb.path ]]; then
+  if [[ -L $units/athanor-tomb.path ]] && command -v systemctl >/dev/null; then
     run systemctl --user disable --now athanor-tomb.path || true
   fi
   local pair path bak
@@ -446,7 +492,7 @@ uninstall() {
   if [[ -f $notch ]]; then
     say "removing the notch"
     run rm "$notch"
-    run rmdir --ignore-fail-on-non-empty "$data"
+    run rmdir "$data" 2>/dev/null || true
   fi
   if [[ -d $cursors ]]; then
     say "removing the cursors in $cursors"
@@ -455,7 +501,7 @@ uninstall() {
   if ((purge)); then
     say "purging settings, fonts, cache and state"
     run rm -rf "$home" "$fonts" "$cache" "$state" "$data"
-    run fc-cache -f
+    if [[ $platform != Darwin ]]; then run fc-cache -f; fi
   else
     say "Kept $home/athanor.toml, $fonts and $cache. --purge removes them too."
   fi

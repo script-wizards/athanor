@@ -6,12 +6,18 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
       # zsh, or the ZDOTDIR installer test skips.
-      - run: sudo apt-get install -y --no-install-recommends zsh shellcheck
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends zsh shellcheck
+      - if: runner.os == 'macOS'
+        run: brew install shellcheck
       - run: uv run --frozen pytest -q
       - run: uv run --frozen ruff check src tests
       - run: uv run --frozen ruff format --check src tests

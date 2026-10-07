@@ -1,3 +1,4 @@
+from . import macos
 from .ansi import paint
 
 TITLE = "The Athanor Guidebook"
@@ -63,14 +64,33 @@ def _rows(rows, width: int, color: bool) -> list[str]:
 
 def text(color: bool) -> str:
     out = [paint(TITLE.center(72).rstrip(), 3, color), ""]
-    out += [paint("The status line at the bottom of the screen:", 8, color)]
-    out += _rows(STATUS, 13, color)
+    out += [paint("The status line (athanor status):", 8, color)]
+    rows = STATUS
+    if macos.available():
+        rows = (
+            ("Dlvl:?", "macOS Spaces are not mapped to dungeon levels."),
+            *STATUS[1:7],
+            *STATUS[8:],
+        )
+    out += _rows(rows, 13, color)
     out += ["", paint("Symbols:", 8, color)]
     out += _rows(SYMBOLS, 13, color)
-    out += ["", paint("Hold Super (the Windows key) and press:", 8, color)]
-    out += _rows(KEYS, 15, color)
+    if macos.available():
+        out += [
+            "",
+            "Terminal.app: import a profile from ~/.config/athanor/current/terminal.",
+            "Kitty: include ~/.config/athanor/current/kitty/colors.conf in kitty.conf.",
+            "transmute updates compatible terminals; Terminal.app uses its imported profile.",
+            "wall N sets a dungeon plate as the wallpaper on your desktops.",
+        ]
+    else:
+        out += ["", paint("Hold Super (the Windows key) and press:", 8, color)]
+        out += _rows(KEYS, 15, color)
     out += ["", paint("At the prompt, type athanor and one of:", 8, color)]
-    out += _rows(COMMANDS, 13, color)
+    commands = COMMANDS
+    if macos.available():
+        commands = tuple(row for row in COMMANDS if row[0] != "windows")
+    out += _rows(commands, 13, color)
     out += ["", "Nothing is renamed. ls is still ls."]
     return "\n".join(out)
 

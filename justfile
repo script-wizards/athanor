@@ -13,7 +13,7 @@ fmt:
     uv run ruff format src tests
     uv run ruff check --fix src tests
 
-# install on this machine (Arch only)
+# install on this machine (Arch desktop or macOS shell)
 install:
     ./install.sh
 

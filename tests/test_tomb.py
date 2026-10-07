@@ -40,6 +40,8 @@ def test_parse_strips_control_characters():
 def test_notify_escapes_markup(monkeypatch, tmp_path):
     from athanor import cli, transmute
 
+    monkeypatch.setattr(cli.macos, "available", lambda: False)
+
     crash = tomb.parse([{"time": 2, "sig": 11, "exe": "/tmp/-<i>x&y"}])
     sent = []
     monkeypatch.setattr(tomb, "latest", lambda: crash)
@@ -54,6 +56,8 @@ def test_notify_escapes_markup(monkeypatch, tmp_path):
 
 def test_latest_asks_for_the_newest_crash(monkeypatch):
     import subprocess
+
+    monkeypatch.setattr(tomb.macos, "available", lambda: False)
 
     seen = []
 

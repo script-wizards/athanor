@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 BIN = "~/.local/bin/athanor"
@@ -25,6 +26,8 @@ def state_dir() -> Path:
 
 
 def font_dir() -> Path:
+    if sys.platform == "darwin" and not os.environ.get("XDG_DATA_HOME"):
+        return Path.home() / "Library/Fonts/athanor"
     return _xdg("XDG_DATA_HOME", ".local/share") / "fonts" / "athanor"
 
 

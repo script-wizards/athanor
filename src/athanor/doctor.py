@@ -6,7 +6,7 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from . import ansi, config, hypr, palette
+from . import ansi, config, hypr, macos, palette
 from .paths import cache_dir, config_dir, current_dir, font_dir, notch_plugin
 from .transmute import saved_scheme
 
@@ -48,9 +48,10 @@ def _run(*cmd: str, timeout: float = 5) -> subprocess.CompletedProcess | None:
 
 
 def check_font_files() -> list[Result]:
-    missing = [f for f in FONT_FILES if not (font_dir() / f).is_file()]
+    wanted = [f for f in FONT_FILES if not (macos.available() and f.endswith(".bdf"))]
+    missing = [f for f in wanted if not (font_dir() / f).is_file()]
     if not missing:
-        return [Result("fonts", OK, f"All {len(FONT_FILES)} fonts are in {font_dir()}.")]
+        return [Result("fonts", OK, f"All {len(wanted)} fonts are in {font_dir()}.")]
     return [
         Result(
             "fonts",
@@ -62,6 +63,10 @@ def check_font_files() -> list[Result]:
 
 
 def check_fonts_resolve(match=None) -> list[Result]:
+    if macos.available() and match is None:
+        return [
+            Result("fonts", OK, "macOS uses CoreText. Select the installed font in your terminal.")
+        ]
     match = match or _fc_family
     face = config.TERMINAL_FONTS[config.load().terminal_font]
     wanted = [face.family, *[f for f in (face.bold, face.italic) if f], "PxPlus IBM VGA 8x16"]
@@ -111,6 +116,8 @@ def check_stale_terminals(now: float | None = None, started=None) -> list[Result
 
 def _process_starts(names) -> list[tuple[str, float]]:
     out = []
+    if not Path("/proc/uptime").is_file():
+        return out
     boot = time.time() - float(Path("/proc/uptime").read_text().split()[0])
     hz = os.sysconf("SC_CLK_TCK")
     for proc in Path("/proc").iterdir():
@@ -163,7 +170,10 @@ def _block_check(area: str, path: Path, line: str) -> Result:
 
 
 def check_zsh() -> list[Result]:
-    line = "[[ -r ~/.config/athanor/athanor.zsh ]] && source ~/.config/athanor/athanor.zsh"
+    line = (
+        '[[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/athanor/athanor.zsh" ]] && '
+        'source "${XDG_CONFIG_HOME:-$HOME/.config}/athanor/athanor.zsh"'
+    )
     return [_block_check("shell", _zshrc(), line)]
 
 
@@ -345,6 +355,8 @@ def check_place() -> list[Result]:
 def check_rendered() -> list[Result]:
     scheme = saved_scheme()
     needed = ["foot/foot.ini", "hypr/hyprlock.conf", "hypr/levels.lua", "mako/config"]
+    if macos.available():
+        needed = ["kitty/colors.conf", *[f"terminal/athanor-{s}.terminal" for s in palette.SCHEMES]]
     missing = [n for n in needed if not (current_dir() / n).exists()]
     if missing:
         return [
@@ -399,10 +411,22 @@ CHECKS = (
     check_tomb_watcher,
 )
 
+LINUX_CHECKS = (
+    check_fonts_resolve,
+    check_stale_terminals,
+    check_hypr_config,
+    check_hypr_session,
+    check_notch,
+    check_display_manager,
+    check_tomb_watcher,
+)
+
 
 def run_all() -> list[Result]:
     results = []
     for check in CHECKS:
+        if macos.available() and check in LINUX_CHECKS:
+            continue
         try:
             results += check()
         except Exception as e:

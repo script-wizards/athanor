@@ -1,7 +1,7 @@
 ![athanor](docs/screenshots/banner.png)
 
 Athanor is an alchemical layer for Arch and Hyprland, inspired by Western
-esotericism and dungeon crawling.
+esotericism and dungeon crawling. Its shell layer also runs on macOS.
 
 ![Umber](docs/screenshots/desktop-umber.png)
 
@@ -97,6 +97,70 @@ running in it. Set `ATHANOR_TITLE=0` in your `.zshrc` to keep your own titles.
 
 Without Hyprland, `./install.sh shell` installs just the command, the prompt and
 the fonts. `./install.sh --uninstall` removes everything.
+
+### macOS
+
+Install [Homebrew](https://brew.sh) first, then run:
+
+```sh
+./install.sh --dry-run
+./install.sh
+```
+
+On macOS the default is the shell layer. The installer uses Homebrew for `uv`
+and ImageMagick, installs TrueType fonts in `~/Library/Fonts/athanor`, and adds
+the prompt to your zsh config. It also installs the Helix, micro and nvim themes.
+The bitmap Ttyp0 italic face and Linux fontconfig rules are skipped. Settings
+remain in `~/.config/athanor`; XDG directory overrides are respected. Keep this
+checkout in place: the command is installed editable and themes use symlinks.
+If `XDG_DATA_HOME` redirects the fonts outside `~/Library/Fonts`, import the
+downloaded `.ttf` files with Font Book before selecting them in a terminal.
+
+Open a new terminal after installing. If `athanor` is not on your PATH, add
+`~/.local/bin` to it (or run `uv tool update-shell`). Try:
+
+```sh
+athanor doctor
+athanor hour
+athanor draw 3
+athanor status
+athanor transmute vellum
+athanor wall 3
+```
+
+`status` reads the Mac's battery, CPU, memory and uptime. `sheet` identifies
+macOS and Aqua. Without SSH host keys, the sigil uses the Mac's platform UUID.
+`tomb` reads modern `.ips` crash reports in DiagnosticReports; automatic crash
+watching is currently Linux-only. macOS Spaces are not mapped to dungeon levels,
+so `Dlvl` shows `?`. `wall N` selects a plate manually and sets it on your
+desktops. Changing the wallpaper may prompt for permission to control System
+Events. `--size WxH` overrides the detected primary display size when rendering.
+
+For **Terminal.app**, import one of the four generated profiles in
+`~/.config/athanor/current/terminal/` through Terminal > Settings > Profiles >
+Import, then choose its font (for example, Px437 Tandy2K at 12 pt). Set the
+profile as the default if you want it for new windows. `transmute` sends live
+colors to compatible terminals; Terminal.app uses the imported profile instead.
+
+For **Kitty**, add this to `~/.config/kitty/kitty.conf` (adjust the path if you
+set `XDG_CONFIG_HOME`):
+
+```conf
+include ../athanor/current/kitty/colors.conf
+font_family Px437 Tandy2K
+font_size 12
+```
+
+`transmute` updates the included colors and recolors the terminal running the
+command. Reload Kitty's config to apply the scheme in other windows. Tarot is
+text by default; `draw --png` writes the daily card image after `cards fetch`.
+
+The Hyprland desktop, notch plugin, Waybar, lockscreen and window picker require
+Linux. Asking for `desktop` or `notch` on macOS exits before installing anything;
+`quit` and `windows` explain that requirement. `./install.sh --uninstall` removes
+the shell integration while preserving settings and fonts; add `--purge` to
+remove those too. Profiles you imported into Terminal.app can be deleted in
+Terminal's settings.
 
 `./install.sh notch` also builds a small Hyprland plugin. It sets each window's
 title into the top of its border and draws a double rule round the focused

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from . import macos
+
 WIDTH = 18
 
 
@@ -86,6 +88,8 @@ def parse(entries: list[dict]) -> Crash | None:
 
 
 def latest() -> Crash | None:
+    if macos.available():
+        return latest_macos()
     try:
         out = subprocess.run(
             # -n counts from the oldest, so --reverse is needed to get the newest.
@@ -102,3 +106,46 @@ def latest() -> Crash | None:
         return parse(json.loads(out.stdout))
     except (json.JSONDecodeError, TypeError, ValueError):
         return None
+
+
+def parse_macos(text: str) -> Crash | None:
+    # .ips reports contain a metadata JSON object followed by a report object.
+    try:
+        header, end = json.JSONDecoder().raw_decode(text.lstrip())
+        rest = text.lstrip()[end:].strip()
+        report = json.loads(rest) if rest else header
+        name = report.get("procName") or header.get("app_name")
+        sig = report.get("exception", {}).get("signal", "")
+        number = getattr(signal, sig, None) if isinstance(sig, str) else None
+        stamp = report.get("captureTime") or header.get("timestamp")
+        if not name or number is None or not stamp:
+            return None
+        when = datetime.fromisoformat(stamp).astimezone(UTC)
+        return Crash(clean(name), int(number), when, int(when.timestamp() * 1_000_000))
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+
+def latest_macos(roots: tuple[Path, ...] | None = None) -> Crash | None:
+    roots = (
+        roots
+        if roots is not None
+        else (
+            Path.home() / "Library/Logs/DiagnosticReports",
+            Path("/Library/Logs/DiagnosticReports"),
+        )
+    )
+    reports = []
+    for root in roots:
+        try:
+            reports += [(p.stat().st_mtime, p) for p in root.glob("*.ips")]
+        except OSError:
+            continue
+    for _, path in sorted(reports, reverse=True):
+        try:
+            crash = parse_macos(path.read_text())
+        except (OSError, UnicodeError):
+            continue
+        if crash:
+            return crash
+    return None
