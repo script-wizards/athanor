@@ -4,15 +4,39 @@ import socket
 from pathlib import Path
 
 
+def _bases() -> list[Path]:
+    return [Path(b) / "hypr" for b in (os.environ.get("XDG_RUNTIME_DIR"), "/tmp") if b]
+
+
+def _answers(path: Path) -> bool:
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        try:
+            s.connect(str(path))
+        except OSError:
+            return False
+    return True
+
+
+# SSH and TTY shells don't get the signature, so look for the newest instance
+# that still answers.
+def _running_instance() -> Path | None:
+    found = [d for base in _bases() for d in base.glob("*") if (d / ".socket.sock").exists()]
+    for d in sorted(found, key=lambda d: d.stat().st_mtime, reverse=True):
+        if _answers(d / ".socket.sock"):
+            return d
+    return None
+
+
 def _socket_path(name: str = ".socket.sock") -> Path | None:
     sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
     if not sig:
-        return None
-    for base in (os.environ.get("XDG_RUNTIME_DIR"), "/tmp"):
-        if base:
-            path = Path(base) / "hypr" / sig / name
-            if path.exists():
-                return path
+        instance = _running_instance()
+        return instance / name if instance else None
+    for base in _bases():
+        path = base / sig / name
+        if path.exists():
+            return path
     return None
 
 

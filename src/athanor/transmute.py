@@ -104,10 +104,24 @@ def start_wallpaper(path: Path) -> None:
                 os.kill(pid, signal.SIGTERM)
 
 
+def screen_or_default(log=print) -> tuple[int, int]:
+    size = hypr.screen_size()
+    if size:
+        return size
+    w, h = DEFAULT_SIZE
+    log(
+        f"No running Hyprland answered, so this is drawn for {w}x{h}. "
+        "Run athanor transmute again inside the session to fit the screen."
+    )
+    return DEFAULT_SIZE
+
+
 def current_walls(size: tuple[int, int] | None = None):
     cfg = config.load()
     size = size or hypr.screen_size() or DEFAULT_SIZE
-    return wall.render(palette.load(saved_scheme()), size, cache_dir() / "wall", cfg.pixel_scale)
+    return wall.render(
+        palette.load(saved_scheme()), size, cache_dir() / "wall", cfg.pixel_scale, cfg.levels
+    )
 
 
 def show_level(workspace: int | None = None) -> Path:
@@ -199,6 +213,7 @@ def tokens(
         "card_png": str(cache_dir() / "tarot-day.png"),
         "term_font": face.family,
         "term_px": str(face.px),
+        "term_icon_px": str(round(face.px * 3 / 4)),
         "term_font_bold": f"{face.bold}:pixelsize={face.px}"
         if face.bold
         else f"{face.family}:pixelsize={face.px}:weight=bold",
@@ -217,10 +232,10 @@ def apply(
 ):
     scheme = palette.load(name)
     cfg = config.load()
-    size = size or hypr.screen_size() or DEFAULT_SIZE
+    size = size or screen_or_default(log)
 
     try:
-        walls = wall.render(scheme, size, cache_dir() / "wall", cfg.pixel_scale)
+        walls = wall.render(scheme, size, cache_dir() / "wall", cfg.pixel_scale, cfg.levels)
     except wall.MissingTool as e:
         log(f"no plates this time: {e}")
         walls = None
@@ -260,7 +275,7 @@ def prerender(size: tuple[int, int] | None = None) -> None:
     size = size or hypr.screen_size() or DEFAULT_SIZE
     for name in palette.SCHEMES:
         with contextlib.suppress(wall.MissingTool, subprocess.CalledProcessError):
-            wall.render(palette.load(name), size, cache_dir() / "wall", cfg.pixel_scale)
+            wall.render(palette.load(name), size, cache_dir() / "wall", cfg.pixel_scale, cfg.levels)
 
 
 def wake(wall: bool = True) -> None:

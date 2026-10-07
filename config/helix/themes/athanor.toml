@@ -42,11 +42,11 @@
 "ui.selection" = { modifiers = ["reversed"] }
 "ui.statusline" = {}
 "ui.statusline.inactive" = { fg = "gray" }
-"ui.statusline.normal" = { fg = "black", bg = "yellow" }
-"ui.statusline.insert" = { fg = "black", bg = "green" }
-"ui.statusline.select" = { fg = "black", bg = "magenta" }
+"ui.statusline.normal" = { fg = "yellow", modifiers = ["reversed"] }
+"ui.statusline.insert" = { fg = "green", modifiers = ["reversed"] }
+"ui.statusline.select" = { fg = "magenta", modifiers = ["reversed"] }
 "ui.bufferline" = { fg = "gray" }
-"ui.bufferline.active" = { fg = "black", bg = "yellow" }
+"ui.bufferline.active" = { fg = "yellow", modifiers = ["reversed"] }
 "ui.bufferline.background" = {}
 "ui.popup" = {}
 "ui.window" = "gray"

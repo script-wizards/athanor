@@ -53,3 +53,13 @@ def test_a_card_can_be_named_upright_or_reversed():
     turned = tarot.draw_by_name("Eight of Cups, reversed")
     assert (turned.card.title, turned.reversed) == ("Eight of Cups", True)
     assert tarot.draw_by_name("the moon, sideways") is None
+
+
+def test_cards_fetch_counts_the_whole_deck(tmp_path, monkeypatch, capsys):
+    from athanor import cli
+
+    for card in tarot.DECK:
+        tarot.art_path(card, tmp_path).write_bytes(b"")
+    monkeypatch.setattr(cli, "_art_dir", lambda: tmp_path)
+    cli.main(["cards", "fetch"])
+    assert capsys.readouterr().out == f"{len(tarot.DECK)} cards in {tmp_path}.\n"

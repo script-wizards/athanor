@@ -18,10 +18,10 @@ class TerminalFont(NamedTuple):
 
 TERMINAL_FONTS = {
     "tandy": TerminalFont("Px437 Tandy2K", 16, bold="Px437 AT&T PC6300", italic="Ttyp0"),
-    "terminus": TerminalFont("Terminus (TTF)", 16),
+    "terminus": TerminalFont("Terminus (TTF)", 16, italic="Ttyp0"),
     "cozette": TerminalFont("CozetteVector", 13),
-    "compaq": TerminalFont("Px437 CompaqThin 8x16", 16),
-    "vga": TerminalFont("PxPlus IBM VGA 8x16", 16),
+    "compaq": TerminalFont("Px437 CompaqThin 8x16", 16, bold="Px437 CompaqThin Overstrike"),
+    "vga": TerminalFont("PxPlus IBM VGA 8x16", 16, bold="PxPlus IBM VGA Overstrike"),
 }
 
 
@@ -35,6 +35,7 @@ class Config:
     room_description: str = DEFAULT_ROOM
     exits: dict[str, str] = field(default_factory=dict)
     pixel_scale: int = 0
+    levels: bool = True
     terminal_font: str = "tandy"
     tarot_on_login: bool = True
     stages: bool = False
@@ -63,6 +64,7 @@ def load() -> Config:
         room_description=room.get("description", DEFAULT_ROOM),
         exits=dict(room.get("exits", {})),
         pixel_scale=int(display.get("pixel_scale", 0)),
+        levels=bool(display.get("levels", True)),
         terminal_font=font,
         tarot_on_login=bool(raw.get("tarot", {}).get("on_login", True)),
         stages=bool(raw.get("transmute", {}).get("stages", False)),

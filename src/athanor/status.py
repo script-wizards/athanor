@@ -10,6 +10,8 @@ from pathlib import Path
 from . import hypr
 
 POWER = Path("/sys/class/power_supply")
+MODULES = Path("/usr/lib/modules")
+SICK = "A new kernel waits. Reboot to load its modules."
 
 
 @dataclass(frozen=True)
@@ -27,6 +29,7 @@ class Reading:
     cpu: int | None
     mem_used: int
     minutes: int
+    sick: bool = False
 
 
 def _read(path: Path) -> str | None:
@@ -91,6 +94,12 @@ def uptime_minutes(uptime: Path = Path("/proc/uptime")) -> int:
     return int(float(text.split()[0]) // 60) if text else 0
 
 
+# After a kernel upgrade the running kernel's modules are gone until a reboot.
+def sick(modules: Path = MODULES, release: str | None = None) -> bool:
+    release = release or os.uname().release
+    return modules.is_dir() and not (modules / release).is_dir()
+
+
 def disk_free(path: str = "/") -> int:
     st = os.statvfs(path)
     return st.f_bavail * st.f_frsize
@@ -111,6 +120,7 @@ def read(cpu: Cpu) -> Reading:
         cpu=cpu.percent(),
         mem_used=mem_used(),
         minutes=uptime_minutes(),
+        sick=sick(),
     )
 
 
@@ -121,16 +131,17 @@ def hp(b: Battery | None) -> str:
 
 
 def line(r: Reading) -> str:
-    return "  ".join(
-        (
-            f"Dlvl:{r.workspace if r.workspace is not None else '?'}",
-            f"$:{size(r.disk_free)}",
-            hp(r.battery),
-            f"Str:{r.cpu if r.cpu is not None else '--'}%",
-            f"Mem:{size(r.mem_used, 1)}",
-            f"T:{r.minutes}",
-        )
-    )
+    fields = [
+        f"Dlvl:{r.workspace if r.workspace is not None else '?'}",
+        f"$:{size(r.disk_free)}",
+        hp(r.battery),
+        f"Str:{r.cpu if r.cpu is not None else '--'}%",
+        f"Mem:{size(r.mem_used, 1)}",
+        f"T:{r.minutes}",
+    ]
+    if r.sick:
+        fields.append("Sick")
+    return "  ".join(fields)
 
 
 def short(r: Reading) -> str:
@@ -153,6 +164,10 @@ TOOLTIP = (
 )
 
 
+def tooltip(r: Reading) -> str:
+    return f"{SICK}\n{TOOLTIP}" if r.sick else TOOLTIP
+
+
 PROMPT_EVENTS = (b"workspace>>", b"workspacev2>>", b"focusedmon>>", b"focusedmonv2>>")
 
 
@@ -167,7 +182,7 @@ def waybar(interval: float = 2.0) -> None:
     last = None
 
     def emit(r: Reading) -> None:
-        out = {"text": line(r), "class": classes(r), "tooltip": TOOLTIP}
+        out = {"text": line(r), "class": classes(r), "tooltip": tooltip(r)}
         sys.stdout.write(json.dumps(out) + "\n")
         sys.stdout.flush()
 

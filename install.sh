@@ -5,9 +5,13 @@
 #   ./install.sh --uninstall --purge  also remove settings, fonts, cache, state
 #
 # Layers:
-#   shell    the command, fonts, zsh prompt and Helix theme
+#   shell    the command, fonts, zsh prompt and the Helix, micro and nvim themes
 #   desktop  Hyprland, Waybar, mako, fuzzel, hyprlock, hypridle, hyprpaper,
 #            foot and the coredump watcher (implies shell)
+#   notch    a Hyprland plugin that sets window titles into the border and
+#            draws a double rule round the focused window. Not installed
+#            unless asked for. Rebuild it after every Hyprland upgrade.
+#            (implies desktop)
 set -euo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -15,6 +19,8 @@ config=${XDG_CONFIG_HOME:-$HOME/.config}
 home=$config/athanor
 fonts=${XDG_DATA_HOME:-$HOME/.local/share}/fonts/athanor
 cursors=${XDG_DATA_HOME:-$HOME/.local/share}/icons/athanor
+data=${XDG_DATA_HOME:-$HOME/.local/share}/athanor
+notch=$data/athanor-notch.so
 cache=${XDG_CACHE_HOME:-$HOME/.cache}/athanor
 state=${XDG_STATE_HOME:-$HOME/.local/state}/athanor
 units=$config/systemd/user
@@ -36,9 +42,10 @@ markers() {
 
 shell_packages=(zsh uv imagemagick curl unzip fontconfig perl)
 desktop_packages=(
-  hyprland hyprlock hypridle waybar mako fuzzel foot hyprpaper swaybg
+  hyprland hyprlock hypridle waybar mako fuzzel foot ttf-nerd-fonts-symbols-mono hyprpaper swaybg
   libnotify grim slurp wl-clipboard brightnessctl playerctl
 )
+notch_packages=(gcc make pkgconf)
 
 dry=0 mode=install purge=0 fresh_fonts=0
 layers=()
@@ -47,7 +54,7 @@ for arg in "$@"; do
     --dry-run) dry=1 ;;
     --uninstall) mode=uninstall ;;
     --purge) purge=1 ;;
-    shell | desktop) layers+=("$arg") ;;
+    shell | desktop | notch) layers+=("$arg") ;;
     -h | --help)
       sed -n '2,/^set -euo/{/^set -euo/d;s/^# \{0,1\}//;p}' "$0"
       exit 0
@@ -65,6 +72,9 @@ has_layer() {
   for l in "${layers[@]}"; do [[ $l == "$1" ]] && return 0; done
   return 1
 }
+if has_layer notch && ! has_layer desktop; then
+  layers=(desktop "${layers[@]}")
+fi
 if has_layer desktop && ! has_layer shell; then
   layers=(shell "${layers[@]}")
 fi
@@ -204,6 +214,9 @@ lua_binds='require(athanor .. "binds")'
 shell_links=(
   "config/zsh/athanor.zsh:$home/athanor.zsh"
   "config/helix/themes/athanor.toml:$config/helix/themes/athanor.toml"
+  "config/micro/colorschemes/athanor.micro:$config/micro/colorschemes/athanor.micro"
+  "config/nvim/colors/athanor.lua:$config/nvim/colors/athanor.lua"
+  "config/nvim/lua/lualine/themes/athanor.lua:$config/nvim/lua/lualine/themes/athanor.lua"
   "config/fontconfig/60-athanor.conf:$config/fontconfig/conf.d/60-athanor.conf"
 )
 desktop_links=(
@@ -246,7 +259,7 @@ install_fonts() {
   say "fonts in $fonts"
   local f
   local oldschool=(PxPlus_IBM_VGA_8x16.ttf Px437_CompaqThin_8x16.ttf Px437_Tandy2K.ttf Px437_ATT_PC6300.ttf)
-  for f in TerminusTTF-4.49.3.ttf CozetteVector.ttf t0-16i-uni.bdf "${oldschool[@]}"; do
+  for f in TerminusTTF-4.49.3.ttf CozetteVector.ttf t0-16i-uni.bdf PxPlus_IBM_VGA_8x16-Overstrike.ttf "${oldschool[@]}"; do
     # Running terminals won't see new fonts until they restart.
     [[ -f $fonts/$f ]] || fresh_fonts=1
   done
@@ -276,6 +289,16 @@ install_fonts() {
     run tar -xzf "$tmp/ttyp0.tar.gz" -C "$tmp"
     run ttyp0_italic "$tmp/$ttyp0" "$fonts/t0-16i-uni.bdf"
   fi
+  # Neither face has a bold, and fontconfig's synthetic one smears pixel glyphs.
+  [[ -f $fonts/PxPlus_IBM_VGA_8x16-Overstrike.ttf ]] ||
+    run uv run --quiet --script "$root/tools/overstrike.py" \
+      "$fonts/PxPlus_IBM_VGA_8x16.ttf" "$fonts/PxPlus_IBM_VGA_8x16-Overstrike.ttf" "PxPlus IBM VGA Overstrike"
+  [[ -f $fonts/Px437_CompaqThin_8x16-Overstrike.ttf ]] ||
+    run uv run --quiet --script "$root/tools/overstrike.py" \
+      "$fonts/Px437_CompaqThin_8x16.ttf" "$fonts/Px437_CompaqThin_8x16-Overstrike.ttf" "Px437 CompaqThin Overstrike"
+  # After the overstrikes, which would otherwise draw each separator twice.
+  run uv run --quiet --script "$root/tools/powerline.py" "${oldschool[@]/#/$fonts/}" \
+    "$fonts/PxPlus_IBM_VGA_8x16-Overstrike.ttf" "$fonts/Px437_CompaqThin_8x16-Overstrike.ttf"
   [[ -f $fonts/CozetteVector.ttf ]] ||
     run curl -fsSL -o "$fonts/CozetteVector.ttf" "$cozette"
   [[ -f $fonts/Jacquard24-Regular.ttf ]] ||
@@ -310,6 +333,12 @@ install_shell() {
   if ! grep -qs '^theme *= *"athanor"' "$config/helix/config.toml"; then
     say "For the Helix theme, set theme = \"athanor\" in $config/helix/config.toml."
     say "For the tabs and mode badge, set bufferline = \"always\" and color-modes = true under [editor]."
+  fi
+  if command -v nvim >/dev/null && ! grep -rqs 'colorscheme.*athanor' "$config/nvim"; then
+    say "For the nvim theme, add vim.cmd.colorscheme(\"athanor\") to your config. Lualine has a theme called athanor too."
+  fi
+  if command -v micro >/dev/null && ! grep -qs '"colorscheme": *"athanor"' "$config/micro/settings.json"; then
+    say "For the micro theme, set \"colorscheme\": \"athanor\" in $config/micro/settings.json."
   fi
   run fc-cache -f
   local face
@@ -361,6 +390,17 @@ install_desktop() {
   run systemctl --user enable --now athanor-tomb.path
 }
 
+install_notch() {
+  say "building the notch against the installed Hyprland"
+  install_packages "${notch_packages[@]}"
+  run mkdir -p "$data"
+  # A running Hyprland has the old build mapped, so the new one is moved into place.
+  run make -s -C "$root/plugin" OUT="$notch.new"
+  run mv "$notch.new" "$notch"
+  say "Hyprland loads the notch at its next config reload."
+  say "If an older build failed to load, Hyprland won't retry. Run: hyprctl plugin load $notch"
+}
+
 render() {
   say "drawing the plates and fetching the deck"
   run "$athanor" transmute "$(cat "$state/scheme" 2>/dev/null || echo umber)" --no-reload
@@ -403,19 +443,24 @@ uninstall() {
     say "removing rendered configs in $home/current"
     run rm -rf "$home/current"
   fi
+  if [[ -f $notch ]]; then
+    say "removing the notch"
+    run rm "$notch"
+    run rmdir --ignore-fail-on-non-empty "$data"
+  fi
   if [[ -d $cursors ]]; then
     say "removing the cursors in $cursors"
     run rm -rf "$cursors"
   fi
   if ((purge)); then
     say "purging settings, fonts, cache and state"
-    run rm -rf "$home" "$fonts" "$cache" "$state"
+    run rm -rf "$home" "$fonts" "$cache" "$state" "$data"
     run fc-cache -f
   else
     say "Kept $home/athanor.toml, $fonts and $cache. --purge removes them too."
   fi
   say "No packages were removed. Athanor may have installed some of these:"
-  say "  ${shell_packages[*]} ${desktop_packages[*]}"
+  say "  ${shell_packages[*]} ${desktop_packages[*]} ${notch_packages[*]}"
   say "Only ash remains."
 }
 
@@ -426,6 +471,7 @@ fi
 
 has_layer shell && install_shell
 has_layer desktop && install_desktop
+has_layer notch && install_notch
 render
 
 if has_layer desktop; then

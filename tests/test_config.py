@@ -31,3 +31,9 @@ def test_the_character_can_be_named(tmp_path, monkeypatch):
     text = '[character]\nname = "Prospero"\ntitle = "the Magus"\nrace = "Arch Linux"\n'
     cfg = _load(tmp_path, monkeypatch, text)
     assert (cfg.name, cfg.title, cfg.race) == ("Prospero", "the Magus", "Arch Linux")
+
+
+def test_levels_default_on_and_can_be_turned_off(tmp_path, monkeypatch):
+    assert _load(tmp_path, monkeypatch, "").levels is True
+    (tmp_path / "athanor" / "athanor.toml").write_text("[display]\nlevels = false\n")
+    assert config.load().levels is False

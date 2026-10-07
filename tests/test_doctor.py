@@ -100,3 +100,30 @@ def test_a_broken_check_does_not_hide_the_rest(monkeypatch):
     results = doctor.run_all()
     assert results[0].status == doctor.WARN and "boom" in results[0].found
     assert results[1].found == "y"
+
+
+def test_no_notch_built_means_nothing_to_say(xdg, monkeypatch):
+    monkeypatch.setenv("HYPRLAND_INSTANCE_SIGNATURE", "x")
+    assert doctor.check_notch() == []
+
+
+def built_notch(xdg, monkeypatch, plugins: str):
+    monkeypatch.setenv("HYPRLAND_INSTANCE_SIGNATURE", "x")
+    monkeypatch.setattr(doctor.hypr, "request", lambda cmd: plugins)
+    notch = xdg / "xdg_data_home" / "athanor" / "athanor-notch.so"
+    notch.parent.mkdir(parents=True)
+    notch.touch()
+    return notch
+
+
+def test_a_loaded_notch_is_ok(xdg, monkeypatch):
+    built_notch(xdg, monkeypatch, '[{"name": "athanor", "version": "0.1.0"}]')
+    (r,) = doctor.check_notch()
+    assert r.status == doctor.OK
+
+
+def test_a_notch_hyprland_refused_says_to_rebuild(xdg, monkeypatch):
+    notch = built_notch(xdg, monkeypatch, "no plugins loaded")
+    (r,) = doctor.check_notch()
+    assert r.status == doctor.WARN
+    assert "install.sh notch" in r.fix and str(notch) in r.fix

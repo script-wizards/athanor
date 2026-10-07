@@ -21,6 +21,8 @@ description = "Dust hangs in the lamplight. A terminal hums on the desk."
 [display]
 # Screen pixels per wallpaper pixel. 0 picks 2 (3 at 4K).
 pixel_scale = 0
+# A plate for each workspace. false keeps level 1's on all of them.
+levels = true
 # tandy, terminus, cozette, compaq or vga. Applies at the next transmute.
 terminal_font = "tandy"
 

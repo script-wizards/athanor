@@ -24,6 +24,18 @@ def state_dir() -> Path:
     return _xdg("XDG_STATE_HOME", ".local/state") / "athanor"
 
 
+def font_dir() -> Path:
+    return _xdg("XDG_DATA_HOME", ".local/share") / "fonts" / "athanor"
+
+
+def data_dir() -> Path:
+    return _xdg("XDG_DATA_HOME", ".local/share") / "athanor"
+
+
+def notch_plugin() -> Path:
+    return data_dir() / "athanor-notch.so"
+
+
 def runtime_dir() -> Path:
     return Path(os.environ.get("XDG_RUNTIME_DIR") or f"/tmp/athanor-{os.getuid()}")
 

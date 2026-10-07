@@ -10,6 +10,7 @@ STATUS = (
     ("Str:14%", "Strength spent: how hard the CPU is working."),
     ("Mem:6.1G", "Memory in use."),
     ("T:48213", "Turns: minutes since boot."),
+    ("Sick", "A new kernel waits. Reboot to load its modules."),
     ("Hour of Venus", "The planetary hour for your sunrise and sunset."),
     ("Moon: waning", "The moon's phase."),
 )

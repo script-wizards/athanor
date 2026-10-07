@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from importlib.resources import as_file, files
 from pathlib import Path
 
+from .paths import font_dir
+
 
 class MissingTool(RuntimeError):
     pass
@@ -28,6 +30,13 @@ class Walls:
         if not workspace or workspace < 1:
             return self.levels[0]
         return self.levels[(workspace - 1) % len(self.levels)]
+
+
+# ImageMagick falls back to any installed font when its own default is missing,
+# and if that is the bitmap ttyp0 italic, every text-capable call fails.
+def _font() -> list[str]:
+    face = font_dir() / "PxPlus_IBM_VGA_8x16.ttf"
+    return ["-font", str(face)] if face.is_file() else []
 
 
 def _magick() -> str:
@@ -99,19 +108,21 @@ def _dither(contrast: str, ink: str, paper: str) -> list[str]:
     ]
 
 
-def render(scheme, size: tuple[int, int], out_dir: Path, configured_scale: int = 0) -> Walls:
+def render(
+    scheme, size: tuple[int, int], out_dir: Path, configured_scale: int = 0, levels: bool = True
+) -> Walls:
     magick = _magick()
     w, h = size
     s = pixel_scale(h, configured_scale)
     lw, lh = math.ceil(w / s), math.ceil(h / s)
     manifest = _manifest()
     out_dir.mkdir(parents=True, exist_ok=True)
-    levels, lock = manifest["level"], manifest["lock"]
-    tag = f"{scheme.name}-{w}x{h}@{s}-{_key(levels, lock)}"
+    plates, lock = manifest["level"], manifest["lock"]
+    tag = f"{scheme.name}-{w}x{h}@{s}-{_key(plates, lock)}"
     lock_out = out_dir / f"lock-{tag}.png"
 
     level_outs = []
-    for n, level in enumerate(levels, start=1):
+    for n, level in enumerate(plates if levels else plates[:1], start=1):
         out = out_dir / f"desk-{n}-{tag}.png"
         level_outs.append(out)
         if out.exists():
@@ -222,6 +233,15 @@ def card_image(
 
 
 def spread_image(pngs: list[str], scheme, per_row: int, gap: int = 8) -> bytes:
-    args = [_magick(), "montage", *pngs, "-tile", f"{per_row}x", "-geometry", f"+{gap}+{gap}"]
+    args = [
+        _magick(),
+        "montage",
+        *_font(),
+        *pngs,
+        "-tile",
+        f"{per_row}x",
+        "-geometry",
+        f"+{gap}+{gap}",
+    ]
     args += ["-background", scheme.roles["bg"], "sixel:-"]
     return subprocess.run(args, capture_output=True, check=True).stdout

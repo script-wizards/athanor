@@ -13,7 +13,7 @@ die() {
   exit 1
 }
 [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] || die "Run this inside a Hyprland session."
-for tool in hyprctl grim magick foot helix fuzzel hyprlock makoctl notify-send python3 uv; do
+for tool in hyprctl grim magick foot nvim fuzzel hyprlock makoctl notify-send python3 uv; do
   command -v "$tool" >/dev/null || die "screenshots need $tool"
 done
 [[ -x $athanor ]] || die "Athanor isn't installed; run ./install.sh first."
@@ -99,7 +99,7 @@ launch athanor-shot-term \
   "env XDG_CONFIG_HOME=$demo ATHANOR_DEMO_REPO=$almagest foot --config $foot_ini --app-id athanor-shot-term zsh $here/terminal.zsh" \
   "$gap" "$gap" "$left_w" "$term_h"
 launch athanor-shot-edit \
-  "foot --config $foot_ini --app-id athanor-shot-edit --working-directory=$almagest helix planetary.c:13" \
+  "foot --config $foot_ini --app-id athanor-shot-edit --working-directory=$almagest nvim --clean --cmd \"set rtp^=$repo/config/nvim\" -S $here/nvim.lua +13 planetary.c" \
   "$right_x" "$edit_y" "$right_w" "$edit_h"
 sleep 2
 
@@ -225,8 +225,9 @@ grim "$here/readings.png"
 echo "readings.png"
 
 mapfile -t plates < <(grep -o '"[^"]*\.png"' "$config/athanor/current/hypr/levels.lua" | tr -d '"')
-# Point sampling, since any smoothing blurs the dither to grey.
-magick montage "${plates[@]}" -filter point -geometry "$((W / 2))x$((H / 2))+4+4" \
+# Point sampling, since any smoothing blurs the dither to grey. montage fails
+# without a font even when there are no labels.
+magick montage -font "$font_dir/Px437_Tandy2K.ttf" "${plates[@]}" -filter point -geometry "$((W / 2))x$((H / 2))+4+4" \
   -tile 4x2 -background '#16120e' "$here/levels.png"
 echo "levels.png"
 

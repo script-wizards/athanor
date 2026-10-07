@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from . import ansi, config, hypr, palette
-from .paths import cache_dir, config_dir, current_dir
+from .paths import cache_dir, config_dir, current_dir, font_dir, notch_plugin
 from .transmute import saved_scheme
 
 OK, WARN, FAIL = "ok", "warn", "FAIL"
@@ -17,6 +17,8 @@ FONT_FILES = (
     "Px437_CompaqThin_8x16.ttf",
     "Px437_Tandy2K.ttf",
     "Px437_ATT_PC6300.ttf",
+    "PxPlus_IBM_VGA_8x16-Overstrike.ttf",
+    "Px437_CompaqThin_8x16-Overstrike.ttf",
     "TerminusTTF-4.49.3.ttf",
     "CozetteVector.ttf",
     "t0-16i-uni.bdf",
@@ -45,15 +47,10 @@ def _run(*cmd: str, timeout: float = 5) -> subprocess.CompletedProcess | None:
         return None
 
 
-def _font_dir() -> Path:
-    data = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local/share")
-    return Path(data) / "fonts" / "athanor"
-
-
 def check_font_files() -> list[Result]:
-    missing = [f for f in FONT_FILES if not (_font_dir() / f).is_file()]
+    missing = [f for f in FONT_FILES if not (font_dir() / f).is_file()]
     if not missing:
-        return [Result("fonts", OK, f"All {len(FONT_FILES)} fonts are in {_font_dir()}.")]
+        return [Result("fonts", OK, f"All {len(FONT_FILES)} fonts are in {font_dir()}.")]
     return [
         Result(
             "fonts",
@@ -93,7 +90,7 @@ def _fc_family(family: str) -> str | None:
 
 
 def check_stale_terminals(now: float | None = None, started=None) -> list[Result]:
-    fonts = [p for p in _font_dir().glob("*.ttf")]
+    fonts = [p for p in font_dir().glob("*.ttf")]
     if not fonts:
         return []
     newest = max(p.stat().st_mtime for p in fonts)
@@ -196,12 +193,13 @@ def check_hypr_config() -> list[Result]:
                 )
             )
         return out
+    why = "Per-workspace wallpapers need hyprland.lua." if config.load().levels else ""
     return [
         _block_check("hyprland", conf, "source = ~/.config/athanor/hypr/athanor.conf"),
         Result(
             "hyprland",
             WARN,
-            "hyprland.conf uses hyprlang. Per-workspace wallpapers need hyprland.lua.",
+            f"hyprland.conf uses hyprlang, which Hyprland is retiring. {why}".strip(),
             "Move hyprland.conf aside and run ./install.sh desktop.",
         ),
     ]
@@ -235,7 +233,8 @@ def check_hypr_session() -> list[Result]:
         )
     else:
         out.append(Result("hyprland", OK, "No config errors."))
-    if (_hypr_dir() / "hyprland.lua").exists() and not _running("hyprpaper"):
+    levels = config.load().levels
+    if levels and (_hypr_dir() / "hyprland.lua").exists() and not _running("hyprpaper"):
         out.append(
             Result(
                 "hyprland",
@@ -246,6 +245,26 @@ def check_hypr_session() -> list[Result]:
             )
         )
     return out
+
+
+def check_notch() -> list[Result]:
+    built = notch_plugin()
+    if not built.is_file() or not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return []
+    try:
+        loaded = json.loads(hypr.request("j/plugin list") or "[]")
+    except json.JSONDecodeError:
+        loaded = []
+    if isinstance(loaded, list) and any(p.get("name") == "athanor" for p in loaded):
+        return [Result("hyprland", OK, "The notch is loaded.")]
+    return [
+        Result(
+            "hyprland",
+            WARN,
+            "The notch is built but not loaded. Hyprland was probably upgraded since.",
+            f"Run ./install.sh notch, then hyprctl plugin load {built}",
+        )
+    ]
 
 
 def _hypr_version() -> tuple[int, ...] | None:
@@ -373,6 +392,7 @@ CHECKS = (
     check_zsh,
     check_hypr_config,
     check_hypr_session,
+    check_notch,
     check_display_manager,
     check_place,
     check_rendered,

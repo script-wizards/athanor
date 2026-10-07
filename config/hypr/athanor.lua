@@ -4,6 +4,8 @@
 local xdg = os.getenv("XDG_CONFIG_HOME")
 local home = ((xdg and xdg ~= "") and xdg or (os.getenv("HOME") .. "/.config")) .. "/athanor"
 local bin = os.getenv("HOME") .. "/.local/bin/athanor"
+local data = os.getenv("XDG_DATA_HOME")
+local notch = ((data and data ~= "") and data or (os.getenv("HOME") .. "/.local/share")) .. "/athanor/athanor-notch.so"
 
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 
@@ -54,5 +56,11 @@ hl.on("workspace.active", function(ws)
     local plate = levels[(math.max(ws.id, 1) - 1) % #levels + 1]
     hl.exec_cmd("hyprctl hyprpaper wallpaper '," .. plate .. "'")
 end)
+
+local built = io.open(notch)
+if built then
+    built:close()
+    pcall(hl.plugin.load, notch)
+end
 
 require(home .. "/current/hypr/colors")

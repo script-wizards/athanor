@@ -1,3 +1,6 @@
+from pathlib import Path
+from types import SimpleNamespace
+
 import pytest
 
 from athanor import palette, render, transmute
@@ -48,8 +51,27 @@ def test_terminal_font_reaches_foot(tmp_path):
     render.render_tree(tmp_path / "out", toks)
     foot = (tmp_path / "out/foot/foot.ini").read_text()
     assert "font=Px437 CompaqThin 8x16:pixelsize=16" in foot
-    assert "font-bold=Px437 CompaqThin 8x16:pixelsize=16:weight=bold" in foot
+    assert "font-bold=Px437 CompaqThin Overstrike:pixelsize=16" in foot
     assert "font-italic=Px437 CompaqThin 8x16:pixelsize=16" in foot
+
+
+def test_terminus_takes_its_italic_from_ttyp0(tmp_path):
+    scheme = palette.load("umber")
+    toks = transmute.tokens(scheme, (1920, 1080), None, tmp_path / "s.png", "x", "terminus")
+    render.render_tree(tmp_path / "out", toks)
+    foot = (tmp_path / "out/foot/foot.ini").read_text()
+    assert "font-italic=Ttyp0:style=Italic:pixelsize=16" in foot
+    assert "font-bold-italic=Terminus (TTF):pixelsize=16:weight=bold" in foot
+
+
+def test_vga_bold_is_the_overstrike(tmp_path):
+    scheme = palette.load("umber")
+    toks = transmute.tokens(scheme, (1920, 1080), None, tmp_path / "s.png", "x", "vga")
+    render.render_tree(tmp_path / "out", toks)
+    assert (
+        "font-bold=PxPlus IBM VGA Overstrike:pixelsize=16"
+        in (tmp_path / "out/foot/foot.ini").read_text()
+    )
 
 
 def test_tandy_takes_its_bold_from_another_face(tmp_path):
@@ -70,6 +92,15 @@ def test_tandy_takes_its_italic_from_ttyp0(tmp_path):
     assert "font-bold-italic=Px437 AT&T PC6300:pixelsize=16" in foot
 
 
+def test_icons_fall_back_to_a_smaller_unsmoothed_face(tmp_path):
+    scheme = palette.load("umber")
+    toks = transmute.tokens(scheme, (1920, 1080), None, tmp_path / "s.png", "x", "tandy")
+    render.render_tree(tmp_path / "out", toks)
+    foot = (tmp_path / "out/foot/foot.ini").read_text()
+    icons = ",Symbols Nerd Font Mono:pixelsize=12:antialias=false:rgba=none\n"
+    assert foot.count(icons) == 4
+
+
 def test_foot_colors_use_sections_foot_accepts(tmp_path):
     scheme = palette.load("vellum")
     toks = transmute.tokens(scheme, (1920, 1080), None, tmp_path / "s.png", "x")
@@ -80,7 +111,7 @@ def test_foot_colors_use_sections_foot_accepts(tmp_path):
 
 
 def test_lock_card_fits_beside_the_text_on_a_small_screen():
-    # The X230: 1366x768, the plate panel ending at 620.
+    # A 1366x768 screen: the plate panel ends at 620.
     layout = transmute.lock_layout((1366, 768), 620, 2)
     card_left = 1366 - transmute.MARGIN - layout["card_w"]
     assert layout["lock_x"] + transmute.TEXT_COLUMN + transmute.GAP <= card_left
@@ -162,3 +193,45 @@ def test_the_lockscreen_greets_the_character(tmp_path, monkeypatch):
     assert toks["name"] == "Prospero"
     monkeypatch.setattr(transmute.getpass, "getuser", lambda: "nachi")
     assert transmute.tokens(scheme, (1366, 768), None, tmp_path / "s.png", "x")["name"] == "nachi"
+
+
+@pytest.mark.parametrize("name", palette.SCHEMES)
+def test_the_notch_takes_the_schemes_colors_only_when_loaded(tmp_path, name):
+    scheme = palette.load(name)
+    toks = transmute.tokens(scheme, (1920, 1080), None, tmp_path / "s.png", "x")
+    render.render_tree(tmp_path / "out", toks)
+    lua = (tmp_path / "out/hypr/colors.lua").read_text()
+    plugin = lua[lua.index("hl.get_loaded_plugins()") :]
+    assert 'plugin.name == "athanor"' in plugin and "border_size = 0" in plugin
+    for role in ("active", "dim", "bg"):
+        assert f"rgb({scheme.roles[role][1:]})" in plugin
+
+
+@pytest.mark.parametrize(("levels", "drawn"), [(True, 7), (False, 1)])
+def test_one_plate_for_every_workspace_when_levels_are_off(tmp_path, monkeypatch, levels, drawn):
+    from athanor import wall
+
+    def magick(cmd, check):
+        Path(cmd[-1]).touch()
+
+    monkeypatch.setattr(wall, "_magick", lambda: "magick")
+    monkeypatch.setattr(wall, "_size", lambda path: (1000, 800))
+    monkeypatch.setattr(wall.subprocess, "run", magick)
+    walls = wall.render(palette.load("umber"), (1366, 768), tmp_path, levels=levels)
+    assert len(list(tmp_path.glob("desk-*.png"))) == drawn
+    assert walls.level(5) == (walls.levels[4] if levels else walls.levels[0])
+    assert walls.level(1).name.startswith("desk-1-")
+
+
+def test_the_spread_names_a_font_so_a_bitmap_face_cant_be_picked(tmp_path, monkeypatch):
+    from athanor import wall
+
+    ran = []
+    monkeypatch.setattr(wall, "_magick", lambda: "magick")
+    monkeypatch.setattr(wall, "font_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        wall.subprocess, "run", lambda args, **kw: ran.append(args) or SimpleNamespace(stdout=b"")
+    )
+    (tmp_path / "PxPlus_IBM_VGA_8x16.ttf").touch()
+    wall.spread_image(["a.png"], palette.load("umber"), 1)
+    assert ran[0][2:4] == ["-font", str(tmp_path / "PxPlus_IBM_VGA_8x16.ttf")]

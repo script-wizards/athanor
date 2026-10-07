@@ -10,3 +10,20 @@ hl.config({
         background_color = "rgb({{ bg.hex }})",
     },
 })
+
+for _, plugin in ipairs(hl.get_loaded_plugins()) do
+    if plugin.name == "athanor" then
+        hl.config({
+            general = { border_size = 0 },
+            plugin = {
+                athanor = {
+                    col = {
+                        active = "rgb({{ active.hex }})",
+                        rule = "rgb({{ dim.hex }})",
+                        bg = "rgb({{ bg.hex }})",
+                    },
+                },
+            },
+        })
+    end
+end

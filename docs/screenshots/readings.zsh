@@ -1,5 +1,6 @@
 source ~/.config/athanor/athanor.zsh 2>/dev/null
 cd "$ATHANOR_DEMO_REPO"
+_athanor_title_folder
 clear
 case $1 in
   tarot)

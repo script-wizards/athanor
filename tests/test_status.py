@@ -64,3 +64,20 @@ def test_workspace_events_trigger_a_redraw():
     assert status.wants_redraw(b"activewindow>>foot,zsh\nworkspace>>3\n")
     assert status.wants_redraw(b"workspacev2>>3,3\n")
     assert not status.wants_redraw(b"activewindow>>foot,zsh\nwindowtitle>>56056e\n")
+
+
+def test_sick_only_while_the_running_kernels_modules_are_gone(tmp_path):
+    (tmp_path / "6.17.1-arch1-1").mkdir()
+    assert not status.sick(tmp_path, "6.17.1-arch1-1")
+    assert status.sick(tmp_path, "6.16.9-arch1-1")
+    assert not status.sick(tmp_path / "nowhere", "6.16.9-arch1-1")
+
+
+def test_sick_ends_the_line_and_explains_itself():
+    r = status.Reading(
+        workspace=1, disk_free=0, battery=None, cpu=0, mem_used=0, minutes=5, sick=True
+    )
+    assert status.line(r).endswith("T:5  Sick")
+    assert status.tooltip(r).startswith(status.SICK)
+    well = status.Reading(workspace=1, disk_free=0, battery=None, cpu=0, mem_used=0, minutes=5)
+    assert "Sick" not in status.line(well) and status.tooltip(well) == status.TOOLTIP

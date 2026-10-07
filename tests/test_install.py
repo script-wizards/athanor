@@ -32,6 +32,8 @@ case "$1 $2" in
   "tool list") [[ -x $HOME/.local/bin/athanor ]] && echo "athanor v0.1.0" ;;
   "tool uninstall") rm -f "$HOME/.local/bin/athanor" ;;
 esac""",
+    "make": """echo "make $*" >> "$LOG"
+for a in "$@"; do [[ $a == OUT=* ]] && touch "${a#OUT=}"; done""",
     "chezmoi": """[[ $1 == source-path && -n $MANAGED && $2 == "$MANAGED" ]] || exit 1
 echo "$HOME/.local/share/chezmoi/dot_zshrc\"""",
 }
@@ -102,6 +104,9 @@ def test_shell_layer_in_a_fresh_home(home):
     for rel in (
         ".config/athanor/athanor.zsh",
         ".config/helix/themes/athanor.toml",
+        ".config/micro/colorschemes/athanor.micro",
+        ".config/nvim/colors/athanor.lua",
+        ".config/nvim/lua/lualine/themes/athanor.lua",
         ".config/fontconfig/conf.d/60-athanor.conf",
     ):
         link = home / rel
@@ -234,3 +239,36 @@ def test_dry_run_touches_nothing(home):
     assert home.files() == {".zshrc"}
     assert "sudo" not in (home.log.read_text() if home.log.exists() else "")
     assert "adding the Athanor block" in out
+
+
+def test_the_notch_is_built_only_when_asked_for(home):
+    home.run()
+    notch = home / ".local/share/athanor/athanor-notch.so"
+    assert not notch.exists()
+    out = home.run("notch", installed=EVERYTHING + " gcc make pkgconf")
+    assert notch.is_file() and not notch.with_name("athanor-notch.so.new").exists()
+    assert f"make -s -C {ROOT}/plugin" in home.log.read_text()
+    assert f"hyprctl plugin load {notch}" in out
+
+
+def test_the_notch_brings_the_desktop_and_its_compiler(home):
+    home.run("notch")
+    assert (home / ".config/hypr/hyprland.lua").exists()
+    assert "gcc make pkgconf" in home.log.read_text()
+
+
+def test_uninstall_takes_the_notch(home):
+    home.run("notch")
+    home.run("--uninstall")
+    assert not (home / ".local/share/athanor").exists()
+
+
+def test_vga_and_compaq_get_an_overstrike_bold_once(home):
+    home.run("shell")
+    log = home.log.read_text()
+    assert log.count("tools/overstrike.py") == 2
+    assert "PxPlus IBM VGA Overstrike" in log and "Px437 CompaqThin Overstrike" in log
+    for name in ("PxPlus_IBM_VGA_8x16-Overstrike.ttf", "Px437_CompaqThin_8x16-Overstrike.ttf"):
+        (home / f".local/share/fonts/athanor/{name}").touch()
+    home.run("shell")
+    assert home.log.read_text().count("tools/overstrike.py") == 2

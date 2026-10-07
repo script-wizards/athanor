@@ -26,7 +26,7 @@ preview scheme="umber" size="1920x1080":
     XDG_CONFIG_HOME=$PWD/preview/config XDG_CACHE_HOME=$PWD/preview/cache XDG_STATE_HOME=$PWD/preview/state \
         uv run athanor transmute {{scheme}} --no-reload --size {{size}}
 
-# check the configs with Hyprland and foot, which must be installed
+# check the configs with Hyprland and foot and build the notch (needs both installed)
 verify:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -38,6 +38,7 @@ verify:
     printf 'require("%s/config/athanor/hypr/athanor")\nrequire("%s/config/athanor/hypr/binds")\n' "$tmp" "$tmp" >"$tmp/hyprland.lua"
     XDG_CONFIG_HOME=$tmp/config Hyprland --verify-config -c "$tmp/hyprland.lua" 2>&1 | grep -v DEBUG | tail -n +2
     foot --check-config --config "$tmp/config/athanor/current/foot/foot.ini" && echo "foot ok"
+    make -s -C plugin OUT="$tmp/athanor-notch.so" && echo "notch ok"
 
 # retake the README's images from inside Hyprland
 screenshots:

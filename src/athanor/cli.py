@@ -238,8 +238,10 @@ def cmd_draw(args) -> None:
 
 def cmd_cards(args) -> None:
     if args.action == "fetch":
-        n = tarot.fetch_art(_art_dir())
-        print(f"{n} cards in {_art_dir()}.")
+        fetched = tarot.fetch_art(_art_dir())
+        have = sum(tarot.art_path(c, _art_dir()).exists() for c in tarot.DECK)
+        head = f"Fetched {fetched}. " if fetched else ""
+        print(f"{head}{have} cards in {_art_dir()}.")
     else:
         for card in tarot.DECK:
             print(f"{card.title:<26} {card.upright}")
